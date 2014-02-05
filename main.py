@@ -4,8 +4,8 @@ import sys
 try:
     import sdl2.events
     from assets import Assets
-    from systems import MappingSystem, NPCSystem, FrameCountSystem, RenderSystem, BackgroundSystem, ForegroundSystem
-    from firstworld import FirstWorld, Player, NPCPlayer
+    from systems import MappingSystem, PlayerSystem, NPCSystem, FrameCountSystem, RenderSystem, ViewSystem, BackgroundSystem, ForegroundSystem
+    from firstworld import FirstWorld, Player, NPCPlayer, Background
 
 except ImportError:
     import traceback
@@ -43,19 +43,22 @@ def run():
     assets.load_items()
 
     world = FirstWorld()
-
+    player_system = PlayerSystem()
     npc_system = NPCSystem(0, 0, 640, 480)
     framecount_system = FrameCountSystem()
     mapping_system = MappingSystem()
 
     render_system = RenderSystem(renderer)
+    view_system = ViewSystem()
     background_system = BackgroundSystem(renderer)
     foreground_system = ForegroundSystem(renderer)
 
     world.add_system(framecount_system)
+    world.add_system(player_system)
     world.add_system(npc_system)
     world.add_system(mapping_system)
 
+    world.add_system(view_system)
     world.add_system(background_system)
     world.add_system(render_system)
     world.add_system(foreground_system)
@@ -64,6 +67,11 @@ def run():
     npc1 = NPCPlayer(world, assets.npc1, ani_count=3, img_startpos=(0, 0), size=(32,32), pos=(200, 200), name='npc1')
     npc2 = NPCPlayer(world, assets.npc1, ani_count=3, img_startpos=(32*3, 32*4), size=(32,32), pos=(300, 300), name='npc2')
     monster = NPCPlayer(world, assets.monster, ani_count=3, img_startpos=(0, 32*4), size=(32,32), pos=(50, 50), name='npc3')
+    desert = Background(world, assets.desert1)
+
+    npc1.spritedata.frame_rate = 5
+    npc2.spritedata.frame_rate = 35
+    monster.spritedata.frame_rate = 65
 
     running = True
     while running:

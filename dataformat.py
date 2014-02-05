@@ -2,7 +2,7 @@ from sdl2.rect import SDL_Rect
 
 
 class CharactorData:
-    def __init__(self, name, pos=(0, 0), size=(32,32), state=0, direction=0, velocity=(0, 0), type='NPC', is_subject=False):
+    def __init__(self, name, type, pos=(0, 0), size=(32,32), state=0, direction=0, velocity=(0, 0), is_subject=False):
         self.name = name
 
         self.posx, self.posy = pos

@@ -15,7 +15,7 @@ class RenderSystem(Applicator):
         self.viewposy = 0
 
     def process(self, world, componentsets):
-        self.renderer.clear(sdl2ext.Color(100, 100, 100))
+        # self.renderer.clear(sdl2ext.Color(100, 100, 100))
         for sdata, cdata in componentsets:
             srcrect = sdata.srcrect
             if cdata.is_subject:
@@ -31,11 +31,14 @@ class BackgroundSystem(System):
         super().__init__()
         self.componenttypes = (SpriteData,)
         self.renderer = renderer
+        self.viewrect = SDL_Rect()
 
     def process(self, world, components):
         for sdata in components:
-            if sdata.type == 'FOREGROUND':
-                sdl2.render.SDL_RenderCopy(self.renderer.renderer, sdata.sprite.texture, sdata.srcrect, None)
+            if sdata.type == 'BACKGROUND':
+                print(sdata.viewrect)
+                sdata.viewrect.w, sdata.viewrect.h = 640, 480
+                sdl2.render.SDL_RenderCopy(self.renderer.renderer, sdata.sprite.texture, sdata.viewrect, None)
 
 
 class ForegroundSystem(System):
@@ -52,6 +55,27 @@ class ForegroundSystem(System):
         sdl2.render.SDL_RenderPresent(self.renderer.renderer)
 
 
+class ViewSystem(Applicator):
+    def __init__(self):
+        super().__init__()
+        self.componenttypes = (SpriteData, CharactorData)
+        self.viewrect = SDL_Rect()
+        self.viewposx = 0
+        self.viewposy = 0
+
+    def process(self, world, componentsets):
+        for sdata, cdata in componentsets:
+            if cdata.is_subject:
+                self.viewposx, self.viewposy = sdata.viewrect.x, sdata.viewrect.y = cdata.posx, cdata.posy
+
+            if sdata.type == 'SPRITE':
+                self.viewrect = sdata.viewrect
+                break
+        for sdata in componentsets:
+            if sdata.type != 'SPRITE':
+                sdata.viewrect = self.viewrect
+
+
 class MappingSystem(System):
     def __init__(self):
         super().__init__()
@@ -65,20 +89,17 @@ class MappingSystem(System):
 
             if cdata.state == 0:
                 continue
-            elif cdata.state == 1 and not self._overlap(cdata.name):
-                # temp_posx, temp_posy = cdata.posx + cdata.vx, cdata.posy + cdata.vy
+            elif cdata.state == 1 :
+                tempposx = cdata.posx
+                tempposy = cdata.posy
                 cdata.posx += cdata.vx
                 cdata.posy += cdata.vy
+                self.mapdata[cdata.name] = (cdata.posx, cdata.posy, cdata.posx+cdata.sizew, cdata.posy+cdata.sizeh)
 
-                # cdata.posx = max(self.minx, cdata.posx)
-                # cdata.posy = max(self.miny, cdata.posy)
-
-                # pmaxx = cdata.posx + cdata.sizew
-                # pmaxy = cdata.posy + cdata.sizeh
-                # if pmaxx > self.maxx:
-                #     cdata.posx = self.maxx - cdata.sizew
-                # if pmaxy > self.maxy:
-                #     cdata.posy = self.maxy - cdata.sizeh
+                if self._overlap(cdata.name):
+                    cdata.posx = tempposx
+                    cdata.posy = tempposy
+                self.mapdata[cdata.name] = (cdata.posx, cdata.posy, cdata.posx+cdata.sizew, cdata.posy+cdata.sizeh)
 
     def _overlap(self, cname):
         left, top, right, bottom = self.mapdata[cname]
@@ -89,13 +110,6 @@ class MappingSystem(System):
             elif left < mdright and right > mdleft and top < mdbottom and bottom > mdtop:
                 return True
         return False
-
-
-        # left, top, right, bottom = sprite.area
-        # bleft, btop, bright, bbottom = self.ball.sprite.area
-
-        # return bleft < right and bright > left and \
-        #     btop < bottom and bbottom > top
 
 
 class NPCSystem(Applicator):
@@ -123,6 +137,23 @@ class NPCSystem(Applicator):
             sdata.srcrect = SDL_Rect(srcx, srcy, cdata.sizew, cdata.sizeh)
 
 
+class PlayerSystem(Applicator):
+    def __init__(self):
+        super().__init__()
+        self.componenttypes = (CharactorData, SpriteData, FrameCount)
+        self.srcx = 0
+        self.srcy = 0
+
+    def process(self, world, componentsets):
+        for cdata, sdata, framecount in componentsets:
+            if cdata.type != 'PLAYER':
+                continue
+            if cdata.state == 1:
+                self.srcx = sdata.img_startx + ((framecount.count // sdata.frame_rate) % sdata.ani_count) * cdata.sizew
+                self.srcy = sdata.img_starty + cdata.direction * cdata.sizeh
+            sdata.srcrect = SDL_Rect(self.srcx, self.srcy, cdata.sizew, cdata.sizeh)
+
+
 class FrameCountSystem(System):
     def __init__(self):
         self.componenttypes = (FrameCount,)
@@ -144,54 +175,3 @@ class FrameCountSystem(System):
         sdl2.timer.SDL_Delay(int(delay))
 
         return frames
-
-
-class CollisionSystem(Applicator):
-    def __init__(self, minx, miny, maxx, maxy):
-        super(CollisionSystem, self).__init__()
-        self.componenttypes = (Velocity, sdl2ext.Sprite)
-        self.ball = None
-        self.minx = minx
-        self.miny = miny
-        self.maxx = maxx
-        self.maxy = maxy
-
-    def _overlap(self, item):
-        sprite = item[1]
-        if sprite == self.ball.sprite:
-            return False
-
-        left, top, right, bottom = sprite.area
-        bleft, btop, bright, bbottom = self.ball.sprite.area
-
-        return bleft < right and bright > left and \
-            btop < bottom and bbottom > top
-
-    def process(self, world, componentsets):
-        collitems = [comp for comp in componentsets if self._overlap(comp)]
-        if len(collitems) != 0:
-            self.ball.velocity.vx = -self.ball.velocity.vx
-
-            sprite = collitems[0][1]
-            ballcentery = self.ball.sprite.y + \
-                self.ball.sprite.size[1] // 2
-            halfheight = sprite.size[1] // 2
-            stepsize = halfheight // 10
-            degrees = 0.7
-            paddlecentery = sprite.y + halfheight
-            if ballcentery < paddlecentery:
-                factor = (paddlecentery - ballcentery) // stepsize
-                self.ball.velocity.vy = -int(round(factor * degrees))
-            elif ballcentery > paddlecentery:
-                factor = (ballcentery - paddlecentery) // stepsize
-                self.ball.velocity.vy = int(round(factor * degrees))
-            else:
-                self.ball.velocity.vy = -self.ball.velocity.vy
-
-        if self.ball.sprite.y <= self.miny or \
-                self.ball.sprite.y + self.ball.sprite.size[1] >= self.maxy:
-            self.ball.velocity.vy = -self.ball.velocity.vy
-
-        if self.ball.sprite.x <= self.minx or \
-                self.ball.sprite.x + self.ball.sprite.size[0] >= self.maxx:
-            self.ball.velocity.vx = -self.ball.velocity.vx

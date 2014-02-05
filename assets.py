@@ -15,7 +15,7 @@ class Assets:
         self.charactor = self.factory.from_image(RESOURCES.get_path("player1.png"))
         # self.npc1 = self.factory.from_color(sdl2ext.Color(255, 0, 0), size=(32, 32))
         self.npc1 = self.factory.from_image(RESOURCES.get_path("player2.png"))
-        self.monster = self.factory.from_image(RESOURCES.get_path("monster.png"))
+        self.npc2 = self.factory.from_image(RESOURCES.get_path("monster.png"))
 
         self.house1 = self.factory.from_image(HOUSERESOURCES.get_path("house1.png"))
 

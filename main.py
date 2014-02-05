@@ -4,8 +4,8 @@ import sys
 try:
     import sdl2.events
     from assets import Assets
-    from systems import MappingSystem, PlayerSystem, NPCSystem, FrameCountSystem, RenderSystem, ViewSystem, BackgroundSystem, ForegroundSystem
-    from firstworld import FirstWorld, Player, NPCPlayer, Background
+    from systems import CollisionSystem, PlayerSystem, NPCSystem, FrameCountSystem, RenderSystem, ViewSystem, ViewReciveSystem, BackgroundSystem, ForegroundSystem
+    from firstworld import FirstWorld, Player, NPC, Background
 
 except ImportError:
     import traceback
@@ -46,32 +46,37 @@ def run():
     player_system = PlayerSystem()
     npc_system = NPCSystem(0, 0, 640, 480)
     framecount_system = FrameCountSystem()
-    mapping_system = MappingSystem()
+    collision_system = CollisionSystem()
+
+    viewrecive_system = ViewReciveSystem(640, 480)
+    view_system = ViewSystem()
 
     render_system = RenderSystem(renderer)
-    view_system = ViewSystem()
     background_system = BackgroundSystem(renderer)
     foreground_system = ForegroundSystem(renderer)
 
-    world.add_system(framecount_system)
     world.add_system(player_system)
     world.add_system(npc_system)
-    world.add_system(mapping_system)
+    world.add_system(collision_system)
 
+    world.add_system(viewrecive_system)
     world.add_system(view_system)
+
     world.add_system(background_system)
     world.add_system(render_system)
     world.add_system(foreground_system)
 
-    user = Player(world, assets.charactor, ani_count=3, img_startpos=(0, 0), size=(32,32), pos=(100, 100), name='player')
-    npc1 = NPCPlayer(world, assets.npc1, ani_count=3, img_startpos=(0, 0), size=(32,32), pos=(200, 200), name='npc1')
-    npc2 = NPCPlayer(world, assets.npc1, ani_count=3, img_startpos=(32*3, 32*4), size=(32,32), pos=(300, 300), name='npc2')
-    monster = NPCPlayer(world, assets.monster, ani_count=3, img_startpos=(0, 32*4), size=(32,32), pos=(50, 50), name='npc3')
-    desert = Background(world, assets.desert1)
+    world.add_system(framecount_system)
 
-    npc1.spritedata.frame_rate = 5
-    npc2.spritedata.frame_rate = 35
-    monster.spritedata.frame_rate = 65
+    user = Player(world, id_='player1', pos=(100, 100), obj_size=(32,32), sprite=assets.charactor, img_size=(32,32), ani_num=3)
+    npc1 = NPC(world, id_='npc1', pos=(200, 200), obj_size=(32,32), sprite=assets.npc1, img_size=(32,32), ani_num=3)
+    npc2 = NPC(world, id_='npc2', pos=(300, 300), obj_size=(32,32), sprite=assets.npc2, img_size=(32,32), ani_num=3, img_startpos=(32*3, 32*4))
+    npc3 = NPC(world, id_='npc3', pos=(50, 50), obj_size=(32,32), sprite=assets.npc1, img_size=(32,32), ani_num=3, img_startpos=(0, 32*4))
+    desert = Background(world, 'desert', assets.desert1, (1280, 1280))
+
+    npc1.animationdata.frame_rate = 5
+    npc2.animationdata.frame_rate = 35
+    npc3.animationdata.frame_rate = 65
 
     running = True
     while running:

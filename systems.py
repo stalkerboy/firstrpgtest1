@@ -3,109 +3,111 @@ from sdl2.rect import SDL_Rect
 import sdl2.timer
 import sdl2.render
 import sdl2.ext as sdl2ext
-from dataformat import CharactorData, FrameCount, SpriteData
+from dataformat import ObjectData, CharactorData, SpriteData, AnimationData, FrameCount
 
 
 class RenderSystem(Applicator):
     def __init__(self, renderer):
         super().__init__()
-        self.componenttypes = (SpriteData, CharactorData)
+        self.componenttypes = (ObjectData, SpriteData)
         self.renderer = renderer
-        self.viewposx = 0
-        self.viewposy = 0
 
     def process(self, world, componentsets):
         # self.renderer.clear(sdl2ext.Color(100, 100, 100))
-        for sdata, cdata in componentsets:
-            srcrect = sdata.srcrect
-            if cdata.is_subject:
-                self.viewposx, self.viewposy = sdata.viewrect.x, sdata.viewrect.y = cdata.posx, cdata.posy
-            if sdata.type == 'SPRITE':
-                distrect = SDL_Rect(cdata.posx - self.viewposx, cdata.posy - self.viewposy, cdata.sizew, cdata.sizeh)
-                sdl2.render.SDL_RenderCopy(self.renderer.renderer, sdata.sprite.texture, srcrect, distrect)
+        for odata, sdata in componentsets:
+            if odata.type != 'BACK' and odata.type != 'FORE':
+                distrect = SDL_Rect(odata.posx - sdata.viewrect.x, odata.posy - sdata.viewrect.y, odata.sizew, odata.sizeh)
+                sdl2.render.SDL_RenderCopy(self.renderer.renderer, sdata.sprite.texture, sdata.srcrect, distrect)
         # sdl2.render.SDL_RenderPresent(self.renderer.renderer)
 
 
-class BackgroundSystem(System):
+class BackgroundSystem(Applicator):
     def __init__(self, renderer):
         super().__init__()
-        self.componenttypes = (SpriteData,)
+        self.componenttypes = (ObjectData, SpriteData)
         self.renderer = renderer
         self.viewrect = SDL_Rect()
 
-    def process(self, world, components):
-        for sdata in components:
-            if sdata.type == 'BACKGROUND':
-                print(sdata.viewrect)
-                sdata.viewrect.w, sdata.viewrect.h = 640, 480
+    def process(self, world, componentsets):
+        for odata, sdata in componentsets:
+            if odata.type == 'BACK':
                 sdl2.render.SDL_RenderCopy(self.renderer.renderer, sdata.sprite.texture, sdata.viewrect, None)
 
 
-class ForegroundSystem(System):
+class ForegroundSystem(Applicator):
     def __init__(self, renderer):
         super().__init__()
-        self.componenttypes = (SpriteData,)
+        self.componenttypes = (ObjectData, SpriteData)
         self.renderer = renderer
 
-    def process(self, world, components):
-        for sdata in components:
+    def process(self, world, componentsets):
+        for odata, sdata in componentsets:
             # if sdata.type == 'FOREGROUND':
             #     sdl2.render.SDL_RenderCopy(self.renderer.renderer, sdata.sprite.texture, srcrect, distrect)
             pass
         sdl2.render.SDL_RenderPresent(self.renderer.renderer)
 
 
-class ViewSystem(Applicator):
-    def __init__(self):
+class ViewReciveSystem(Applicator):
+    def __init__(self, view_sizew, view_sizeh):
         super().__init__()
         self.componenttypes = (SpriteData, CharactorData)
-        self.viewrect = SDL_Rect()
-        self.viewposx = 0
-        self.viewposy = 0
+        self.view_sizew = view_sizew
+        self.view_sizeh = view_sizeh
 
     def process(self, world, componentsets):
         for sdata, cdata in componentsets:
-            if cdata.is_subject:
-                self.viewposx, self.viewposy = sdata.viewrect.x, sdata.viewrect.y = cdata.posx, cdata.posy
-
-            if sdata.type == 'SPRITE':
-                self.viewrect = sdata.viewrect
+            if sdata.is_subject:
+                if cdata.posx < 0 or cdata.posx > self.view_sizew or cdata.posy < 0 or cdata.posy > self.view_sizeh:
+                    continue
+                sdata.viewrect = SDL_Rect(cdata.posx, cdata.posy, self.view_sizew, self.view_sizeh)
                 break
-        for sdata in componentsets:
-            if sdata.type != 'SPRITE':
-                sdata.viewrect = self.viewrect
 
 
-class MappingSystem(System):
+class ViewSystem(System):
     def __init__(self):
         super().__init__()
-        self.componenttypes = (CharactorData,)
+        self.componenttypes = (SpriteData,)
+        self.viewposx, self.viewposy = 0, 0
+        self.viewrect = SDL_Rect()
+
+    def process(self, world, components):
+        for sdata in components:
+            if isinstance(sdata, AnimationData) and sdata.is_subject:
+                self.viewrect = sdata.viewrect
+                break
+        for sdata in components:
+            sdata.viewrect = self.viewrect
+
+
+class CollisionSystem(Applicator):
+    def __init__(self):
+        super().__init__()
+        self.componenttypes = (ObjectData, SpriteData)
         self.mapdata = {}
 
     def process(self, world, componentsets):
-        for cdata in componentsets:
+        for odata, sdata in componentsets:
 
-            self.mapdata[cdata.name] = (cdata.posx, cdata.posy, cdata.posx+cdata.sizew, cdata.posy+cdata.sizeh)
+            self.mapdata[odata.id_] = (odata.posx, odata.posy, odata.posx+odata.sizew, odata.posy+odata.sizeh)
 
-            if cdata.state == 0:
-                continue
-            elif cdata.state == 1 :
-                tempposx = cdata.posx
-                tempposy = cdata.posy
-                cdata.posx += cdata.vx
-                cdata.posy += cdata.vy
-                self.mapdata[cdata.name] = (cdata.posx, cdata.posy, cdata.posx+cdata.sizew, cdata.posy+cdata.sizeh)
+            if isinstance(odata, CharactorData):
+                tempposx = odata.posx
+                tempposy = odata.posy
+                odata.posx += odata.vx
+                odata.posy += odata.vy
+                self.mapdata[odata.id_] = (odata.posx, odata.posy, odata.posx+odata.sizew, odata.posy+odata.sizeh)
 
-                if self._overlap(cdata.name):
-                    cdata.posx = tempposx
-                    cdata.posy = tempposy
-                self.mapdata[cdata.name] = (cdata.posx, cdata.posy, cdata.posx+cdata.sizew, cdata.posy+cdata.sizeh)
+                if self._overlap(odata.id_):
+                    odata.posx = tempposx
+                    odata.posy = tempposy
+                self.mapdata[odata.id_] = (odata.posx, odata.posy, odata.posx+odata.sizew, odata.posy+odata.sizeh)
 
-    def _overlap(self, cname):
-        left, top, right, bottom = self.mapdata[cname]
-        for name, area in self.mapdata.items():
+    def _overlap(self, oid):
+        left, top, right, bottom = self.mapdata[oid]
+        for id_, area in self.mapdata.items():
             mdleft, mdtop, mdright, mdbottom = area
-            if cname == name:
+            if oid == id_:
                 continue
             elif left < mdright and right > mdleft and top < mdbottom and bottom > mdtop:
                 return True
@@ -115,14 +117,14 @@ class MappingSystem(System):
 class NPCSystem(Applicator):
     def __init__(self, minx, miny, maxx, maxy):
         super().__init__()
-        self.componenttypes = (CharactorData, SpriteData, FrameCount)
+        self.componenttypes = (CharactorData, AnimationData, FrameCount)
         self.minx = minx
         self.miny = miny
         self.maxx = maxx
         self.maxy = maxy
 
     def process(self, world, componentsets):
-        for cdata, sdata, framecount in componentsets:
+        for cdata, adata, framecount in componentsets:
             if cdata.type != 'NPC':
                 continue
             if cdata.posx >= self.maxx - cdata.sizew:
@@ -132,26 +134,43 @@ class NPCSystem(Applicator):
                 cdata.vx = 1
                 cdata.direction = 2
 
-            srcx = sdata.img_startx + ((framecount.count // sdata.frame_rate) % sdata.ani_count) * cdata.sizew
-            srcy = sdata.img_starty + cdata.direction * cdata.sizeh
-            sdata.srcrect = SDL_Rect(srcx, srcy, cdata.sizew, cdata.sizeh)
+            srcx = adata.img_startx + ((framecount.count // adata.frame_rate) % adata.ani_num) * cdata.sizew
+            srcy = adata.img_starty + cdata.direction * cdata.sizeh
+            adata.srcrect = SDL_Rect(srcx, srcy, adata.sizew, adata.sizeh)
 
+
+# class PlayerSystem(Applicator):
+#     def __init__(self):
+#         super().__init__()
+#         self.componenttypes = (CharactorData, SpriteData, FrameCount)
+#         self.srcx = 0
+#         self.srcy = 0
+
+#     def process(self, world, componentsets):
+#         for cdata, sdata, framecount in componentsets:
+#             if cdata.type != 'PLAYER':
+#                 continue
+#             if cdata.state == 1:
+#                 self.srcx = sdata.img_startx + ((framecount.count // sdata.frame_rate) % sdata.ani_num) * cdata.sizew
+#                 self.srcy = sdata.img_starty + cdata.direction * cdata.sizeh
+#             sdata.srcrect = SDL_Rect(self.srcx, self.srcy, cdata.sizew, cdata.sizeh)
 
 class PlayerSystem(Applicator):
     def __init__(self):
         super().__init__()
-        self.componenttypes = (CharactorData, SpriteData, FrameCount)
+        self.componenttypes = (CharactorData, AnimationData, FrameCount)
         self.srcx = 0
         self.srcy = 0
 
     def process(self, world, componentsets):
-        for cdata, sdata, framecount in componentsets:
+        for cdata, adata, framecount in componentsets:
             if cdata.type != 'PLAYER':
                 continue
             if cdata.state == 1:
-                self.srcx = sdata.img_startx + ((framecount.count // sdata.frame_rate) % sdata.ani_count) * cdata.sizew
-                self.srcy = sdata.img_starty + cdata.direction * cdata.sizeh
-            sdata.srcrect = SDL_Rect(self.srcx, self.srcy, cdata.sizew, cdata.sizeh)
+                self.srcx = adata.img_startx + ((framecount.count // adata.frame_rate) % adata.ani_num) * cdata.sizew
+                self.srcy = adata.img_starty + cdata.direction * cdata.sizeh
+            adata.srcrect = SDL_Rect(self.srcx, self.srcy, adata.sizew, adata.sizeh)
+
 
 
 class FrameCountSystem(System):

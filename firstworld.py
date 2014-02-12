@@ -34,3 +34,16 @@ class Foreground(Entity):
     def __init__(self, world, id_, pos, obj_size, sprite, img_size):
         self.objectdata = ObjectData(id_=id_, type='FORE', pos=pos, size=obj_size)
         self.spritedata = SpriteData(sprite=sprite, type="SPR", size=img_size)
+
+
+class House(Entity):
+    def __init__(self, world, id_, pos, obj_size, sprite, img_size, img_startpos=(0, 0)):
+        self.objectdata = ObjectData(id_=id_, type='STOBJECT', pos=pos, size=obj_size)
+        self.spritedata = SpriteData(sprite=sprite, type="SPR", size=img_size, img_startpos=img_startpos)
+
+
+class StalkerMonster(Entity):
+    def __init__(self, world, id_, pos, obj_size, sprite, img_size, ani_num, img_startpos=(0,0)):
+        self.charactordata = CharactorData(id_=id_, type='STMON', pos=pos, size=obj_size, velocity=(1,0), direction=2)
+        self.animationdata = AnimationData(sprite=sprite, type='ANI', size=img_size, ani_num=ani_num, img_startpos = img_startpos)
+        self.framecount = FrameCount()

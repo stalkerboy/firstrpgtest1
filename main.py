@@ -4,8 +4,8 @@ import sys
 try:
     import sdl2.events
     from assets import Assets
-    from systems import CollisionSystem, PlayerSystem, NPCSystem, FrameCountSystem, RenderSystem, ViewSystem, ViewReciveSystem, BackgroundSystem, ForegroundSystem
-    from firstworld import FirstWorld, Player, NPC, Background
+    from systems import CollisionSystem, PlayerSystem, NPCSystem, FrameCountSystem, RenderSystem, ViewSystem, ViewReciveSystem, BackgroundSystem, ForegroundSystem, StaticObjectSystem
+    from firstworld import FirstWorld, Player, NPC, Background, House
 
 except ImportError:
     import traceback
@@ -45,10 +45,12 @@ def run():
     world = FirstWorld()
     player_system = PlayerSystem()
     npc_system = NPCSystem(0, 0, 640, 480)
+    static_object_system = StaticObjectSystem()
+
     framecount_system = FrameCountSystem()
     collision_system = CollisionSystem()
 
-    viewrecive_system = ViewReciveSystem(640, 480)
+    viewrecive_system = ViewReciveSystem(640, 480, 1280, 1280)
     view_system = ViewSystem()
 
     render_system = RenderSystem(renderer)
@@ -57,6 +59,8 @@ def run():
 
     world.add_system(player_system)
     world.add_system(npc_system)
+    world.add_system(static_object_system)
+
     world.add_system(collision_system)
 
     world.add_system(viewrecive_system)
@@ -69,10 +73,14 @@ def run():
     world.add_system(framecount_system)
 
     user = Player(world, id_='player1', pos=(100, 100), obj_size=(32,32), sprite=assets.charactor, img_size=(32,32), ani_num=3)
-    npc1 = NPC(world, id_='npc1', pos=(200, 200), obj_size=(32,32), sprite=assets.npc1, img_size=(32,32), ani_num=3)
-    npc2 = NPC(world, id_='npc2', pos=(300, 300), obj_size=(32,32), sprite=assets.npc2, img_size=(32,32), ani_num=3, img_startpos=(32*3, 32*4))
-    npc3 = NPC(world, id_='npc3', pos=(50, 50), obj_size=(32,32), sprite=assets.npc1, img_size=(32,32), ani_num=3, img_startpos=(0, 32*4))
+    npc1 = NPC(world, id_='npc1', pos=(200, 50), obj_size=(32,32), sprite=assets.npc1, img_size=(32,32), ani_num=3)
+    npc2 = NPC(world, id_='npc2', pos=(300, 100), obj_size=(32,32), sprite=assets.npc2, img_size=(32,32), ani_num=3, img_startpos=(32*3, 32*4))
+    npc3 = NPC(world, id_='npc3', pos=(50, 10), obj_size=(32,32), sprite=assets.npc1, img_size=(32,32), ani_num=3, img_startpos=(0, 32*4))
     desert = Background(world, 'desert', assets.desert1, (1280, 1280))
+    house1 = House(world, 'house1', (410,150), (285,275), assets.house1, (85,75))
+    house2 = House(world, 'house2', (850,650), (285,275), assets.house1, (85,75), (608,96))
+
+
 
     npc1.animationdata.frame_rate = 5
     npc2.animationdata.frame_rate = 35
@@ -88,16 +96,16 @@ def run():
                 user.charactordata.state = 1
 
                 if event.key.keysym.sym == sdl2.keycode.SDLK_UP:
-                    user.charactordata.vy = -10
+                    user.charactordata.vy = -5
                     user.charactordata.direction = 3
                 elif event.key.keysym.sym == sdl2.keycode.SDLK_DOWN:
-                    user.charactordata.vy = 10
+                    user.charactordata.vy = 5
                     user.charactordata.direction = 0
                 elif event.key.keysym.sym == sdl2.keycode.SDLK_LEFT:
-                    user.charactordata.vx = -10
+                    user.charactordata.vx = -5
                     user.charactordata.direction = 1
                 elif event.key.keysym.sym == sdl2.keycode.SDLK_RIGHT:
-                    user.charactordata.vx = 10
+                    user.charactordata.vx = 5
                     user.charactordata.direction = 2
             elif event.type == sdl2.events.SDL_KEYUP:
                 if event.key.keysym.sym in (sdl2.keycode.SDLK_UP, sdl2.keycode.SDLK_DOWN, sdl2.keycode.SDLK_LEFT, sdl2.keycode.SDLK_RIGHT):

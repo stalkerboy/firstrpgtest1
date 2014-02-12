@@ -17,7 +17,7 @@ class Assets:
         self.npc1 = self.factory.from_image(RESOURCES.get_path("player2.png"))
         self.npc2 = self.factory.from_image(RESOURCES.get_path("monster.png"))
 
-        self.house1 = self.factory.from_image(HOUSERESOURCES.get_path("house1.png"))
+        self.house1 = self.factory.from_image(RESOURCES.get_path("house.png"))
 
         self.desert1 = self.factory.from_image(MAPRESOURCES.get_path('desert1.png'))
 

@@ -2,7 +2,6 @@ from sdl2.ext.ebs import Applicator, System
 from sdl2.rect import SDL_Rect
 import sdl2.timer
 import sdl2.render
-import sdl2.ext as sdl2ext
 from dataformat import ObjectData, CharactorData, SpriteData, AnimationData, FrameCount
 
 
@@ -16,6 +15,7 @@ class RenderSystem(Applicator):
         # self.renderer.clear(sdl2ext.Color(100, 100, 100))
         for odata, sdata in componentsets:
             if odata.type != 'BACK' and odata.type != 'FORE':
+
                 distrect = SDL_Rect(odata.posx - sdata.viewrect.x, odata.posy - sdata.viewrect.y, odata.sizew, odata.sizeh)
                 sdl2.render.SDL_RenderCopy(self.renderer.renderer, sdata.sprite.texture, sdata.srcrect, distrect)
         # sdl2.render.SDL_RenderPresent(self.renderer.renderer)
@@ -49,18 +49,36 @@ class ForegroundSystem(Applicator):
 
 
 class ViewReciveSystem(Applicator):
-    def __init__(self, view_sizew, view_sizeh):
+    def __init__(self, view_sizew, view_sizeh, mapsizew, mapsizeh):
         super().__init__()
         self.componenttypes = (SpriteData, CharactorData)
         self.view_sizew = view_sizew
         self.view_sizeh = view_sizeh
+        self.mapsizew = mapsizew
+        self.mapsizeh = mapsizeh
 
     def process(self, world, componentsets):
+        viewx, viewy = 0, 0
         for sdata, cdata in componentsets:
             if sdata.is_subject:
-                if cdata.posx < 0 or cdata.posx > self.view_sizew or cdata.posy < 0 or cdata.posy > self.view_sizeh:
+                if cdata.posx < 0 or cdata.posx > self.mapsizew or cdata.posy < 0 or cdata.posy > self.mapsizeh:
                     continue
-                sdata.viewrect = SDL_Rect(cdata.posx, cdata.posy, self.view_sizew, self.view_sizeh)
+
+                if cdata.posx - self.view_sizew//2 < 0:
+                    viewx = 0
+                elif cdata.posx + self.view_sizew//2 > self.mapsizew:
+                    viewx = self.mapsizew - self.view_sizew
+                else:
+                    viewx = cdata.posx-self.view_sizew//2
+
+                if cdata.posy - self.view_sizeh//2 < 0:
+                    viewy = 0
+                elif cdata.posy + self.view_sizeh//2 > self.mapsizeh:
+                    viewy = self.mapsizeh - self.view_sizeh
+                else:
+                    viewy = cdata.posy-self.view_sizeh//2
+
+                sdata.viewrect = SDL_Rect(viewx, viewy, self.view_sizew, self.view_sizeh)
                 break
 
 
@@ -139,21 +157,17 @@ class NPCSystem(Applicator):
             adata.srcrect = SDL_Rect(srcx, srcy, adata.sizew, adata.sizeh)
 
 
-# class PlayerSystem(Applicator):
-#     def __init__(self):
-#         super().__init__()
-#         self.componenttypes = (CharactorData, SpriteData, FrameCount)
-#         self.srcx = 0
-#         self.srcy = 0
+class StaticObjectSystem(Applicator):
+    def __init__(self):
+        super().__init__()
+        self.componenttypes = (ObjectData, SpriteData)
 
-#     def process(self, world, componentsets):
-#         for cdata, sdata, framecount in componentsets:
-#             if cdata.type != 'PLAYER':
-#                 continue
-#             if cdata.state == 1:
-#                 self.srcx = sdata.img_startx + ((framecount.count // sdata.frame_rate) % sdata.ani_num) * cdata.sizew
-#                 self.srcy = sdata.img_starty + cdata.direction * cdata.sizeh
-#             sdata.srcrect = SDL_Rect(self.srcx, self.srcy, cdata.sizew, cdata.sizeh)
+    def process(self, world, componentsets):
+        for odata, sdata in componentsets:
+            if odata.type != 'STOBJECT':
+                continue
+            sdata.srcrect = SDL_Rect(sdata.img_startx, sdata.img_starty, sdata.sizew, sdata.sizeh)
+
 
 class PlayerSystem(Applicator):
     def __init__(self):
